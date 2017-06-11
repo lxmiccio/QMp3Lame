@@ -37,3 +37,9 @@ Makefile*
 # QtCtreator CMake
 CMakeLists.txt.user*
 
+# Build folder
+debug/*
+release/*
+
+# Backup files
+*~
