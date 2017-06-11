@@ -53,7 +53,6 @@
 # define CLOCKS_PER_SEC 1000000
 #endif
 
-
 double
 GetCPUTime(void)
 {
@@ -119,7 +118,6 @@ GetRealTime(void)
 }
 
 #endif
-
 
 #if defined(_WIN32) || defined(__CYGWIN__)
 # include <io.h>

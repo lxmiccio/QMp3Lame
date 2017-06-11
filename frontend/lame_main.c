@@ -130,7 +130,7 @@ parse_args_from_string(lame_global_flags * const gfp, const char *p, char *inPat
 
 
 static FILE *
-init_files(lame_global_flags * gf, char const *inPath, char const *outPath)
+init_files(lame_global_flags * gf, AudioData* audioData, ReaderConfig * readerConfig, DecoderConfig * decoderConfig, RawPCMConfig * rawPcmConfig, char const *inPath, char const *outPath)
 {
     FILE   *outf;
     /* Mostly it is not useful to use the same input and output name.
@@ -148,7 +148,7 @@ init_files(lame_global_flags * gf, char const *inPath, char const *outPath)
      * if you want to do your own file input, skip this call and set
      * samplerate, num_channels and num_samples yourself.
      */
-    if (init_infile(gf, inPath) < 0) {
+    if (init_infile(gf, audioData, readerConfig, decoderConfig, rawPcmConfig, inPath) < 0) {
         error_printf("Can't init infile '%s'\n", inPath);
         return NULL;
     }
@@ -202,14 +202,14 @@ printInputFormat(lame_t gfp)
  * samples to skip, to (for example) compensate for the encoder delay */
 
 static int
-lame_decoder(lame_t gfp, FILE * outf, char *inPath, char *outPath)
+lame_decoder(lame_t gfp, AudioData * audioData, ReaderConfig * readerConfig, WriterConfig* writerConfig, DecoderConfig * decoderConfig, RawPCMConfig * rawPcmConfig, FILE * outf, char *inPath, char *outPath)
 {
     short int Buffer[2][1152];
     int     i, iread;
     double  wavsize;
     int     tmp_num_channels = lame_get_num_channels(gfp);
-    int     skip_start = samples_to_skip_at_start();
-    int     skip_end = samples_to_skip_at_end();
+    int     skip_start = samples_to_skip_at_start(audioData);
+    int     skip_end = samples_to_skip_at_end(audioData);
     DecoderProgress dp = 0;
 
     if (!(tmp_num_channels >= 1 && tmp_num_channels <= 2)) {
@@ -258,13 +258,13 @@ lame_decoder(lame_t gfp, FILE * outf, char *inPath, char *outPath)
 
     wavsize = 0;
     do {
-        iread = get_audio16(gfp, Buffer); /* read in 'iread' samples */
+        iread = get_audio16(gfp, audioData, readerConfig, decoderConfig, rawPcmConfig, Buffer); /* read in 'iread' samples */
         if (iread >= 0) {
             wavsize += iread;
             if (dp != 0) {
                 decoder_progress(dp, &global_decoder.mp3input_data, iread);
             }
-            put_audio16(outf, Buffer, iread, tmp_num_channels);
+            put_audio16(readerConfig, writerConfig, decoderConfig, outf, Buffer, iread, tmp_num_channels);
         }
     } while (iread > 0);
 
@@ -288,7 +288,7 @@ lame_decoder(lame_t gfp, FILE * outf, char *inPath, char *outPath)
         && !fseek(outf, 0l, SEEK_SET))
         WriteWaveHeader(outf, (int) wavsize, lame_get_in_samplerate(gfp), tmp_num_channels, 16);
     fclose(outf);
-    close_infile();
+    close_infile(audioData);
 
     if (dp != 0)
         decoder_progress_finish(dp);
@@ -411,7 +411,7 @@ write_id3v1_tag(lame_t gf, FILE * outf)
 
 
 static int
-lame_encoder_loop(lame_global_flags * gf, FILE * outf, int nogap, char *inPath, char *outPath)
+lame_encoder_loop(lame_global_flags * gf, AudioData * audioData, ReaderConfig * readerConfig, DecoderConfig * decoderConfig, RawPCMConfig * rawPcmConfig, FILE * outf, int nogap, char *inPath, char *outPath)
 {
     unsigned char mp3buffer[LAME_MAXMP3BUFFER];
     int     Buffer[2][1152];
@@ -435,8 +435,8 @@ lame_encoder_loop(lame_global_flags * gf, FILE * outf, int nogap, char *inPath, 
         }
     }
     else {
-        unsigned char* id3v2tag = getOldTag(gf);
-        id3v2_size = sizeOfOldTag(gf);
+        unsigned char* id3v2tag = getOldTag(gf, audioData);
+        id3v2_size = sizeOfOldTag(gf, audioData);
         if ( id3v2_size > 0 ) {
             size_t owrite = fwrite(id3v2tag, 1, id3v2_size, outf);
             if (owrite != id3v2_size) {
@@ -453,7 +453,7 @@ lame_encoder_loop(lame_global_flags * gf, FILE * outf, int nogap, char *inPath, 
     /* encode until we hit eof */
     do {
         /* read in 'iread' samples */
-        iread = get_audio(gf, Buffer);
+        iread = get_audio(gf, audioData, readerConfig, decoderConfig, rawPcmConfig, Buffer);
 
         if (iread >= 0) {
             encoder_progress(gf);
@@ -524,13 +524,13 @@ lame_encoder_loop(lame_global_flags * gf, FILE * outf, int nogap, char *inPath, 
 
 
 static int
-lame_encoder(lame_global_flags * gf, FILE * outf, int nogap, char *inPath, char *outPath)
+lame_encoder(lame_global_flags * gf, AudioData * audioData, ReaderConfig * readerConfig, DecoderConfig * decoderConfig, RawPCMConfig * rawPcmConfig, FILE * outf, int nogap, char *inPath, char *outPath)
 {
     int     ret;
 
-    ret = lame_encoder_loop(gf, outf, nogap, inPath, outPath);
+    ret = lame_encoder_loop(gf, audioData, readerConfig, decoderConfig, rawPcmConfig, outf, nogap, inPath, outPath);
     fclose(outf);       /* close the output file */
-    close_infile();     /* close the input file */
+    close_infile(audioData);     /* close the input file */
     return ret;
 }
 
@@ -607,7 +607,7 @@ parse_nogap_filenames(int nogapout, char const *inPath, char *outPath, char *out
     }
 }
 
-
+#if 0
 int
 lame_main(lame_t gf, int argc, char **argv)
 {
@@ -726,3 +726,4 @@ lame_main(lame_t gf, int argc, char **argv)
     }
     return ret;
 }
+#endif

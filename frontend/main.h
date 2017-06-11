@@ -39,6 +39,7 @@ extern "C" {
 #endif
 
 
+#if 0 /* Moved to get_audio.h */
 /* GLOBAL VARIABLES used by parse.c and main.c.  
    instantiated in parce.c.  ugly, ugly */
 
@@ -85,6 +86,7 @@ extern WriterConfig global_writer;
 extern UiConfig global_ui_config;
 extern DecoderConfig global_decoder;
 extern RawPCMConfig global_raw_pcm;
+#endif
 
 
 extern FILE* lame_fopen(char const* file, char const* mode);

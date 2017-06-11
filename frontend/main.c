@@ -87,8 +87,10 @@ char   *strchr(), *strrchr();
 #endif
 
 
+#if 0
 static int c_main(int argc, char *argv[]);
 extern int lame_main(lame_t gf, int argc, char *argv[]);
+#endif
 
 
 /************************************************************************
@@ -435,7 +437,9 @@ char* lame_getenv(char const* var)
 
 int main(int argc, char *argv[])
 {
+#if 0
     return c_main(argc, argv);
+#endif
 }
 
 #endif
@@ -443,6 +447,7 @@ int main(int argc, char *argv[])
 
 
 
+#if 0
 static int
 c_main(int argc, char *argv[])
 {
@@ -473,3 +478,4 @@ c_main(int argc, char *argv[])
     frontend_close_console();
     return ret;
 }
+#endif

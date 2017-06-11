@@ -42,21 +42,112 @@ typedef enum sound_file_format_e {
     sf_ogg
 } sound_file_format;
 
+#if 1
+/* GLOBAL VARIABLES used by parse.c and main.c.
+   instantiated in parce.c.  ugly, ugly */
+
+typedef struct ReaderConfig
+{
+        sound_file_format input_format;
+        int   swapbytes;                /* force byte swapping   default=0 */
+        int   swap_channel;             /* 0: no-op, 1: swaps input channels */
+        int   input_samplerate;
+} ReaderConfig;
+
+typedef struct WriterConfig
+{
+        int   flush_write;
+} WriterConfig;
+
+typedef struct UiConfig
+{
+        int   silent;                   /* Verbosity */
+        int   brhist;
+        int   print_clipping_info;      /* print info whether waveform clips */
+        float update_interval;          /* to use Frank's time status display */
+} UiConfig;
+
+typedef struct DecoderConfig
+{
+        int   mp3_delay;                /* to adjust the number of samples truncated during decode */
+        int   mp3_delay_set;            /* user specified the value of the mp3 encoder delay to assume for decoding */
+        int   disable_wav_header;
+        mp3data_struct mp3input_data;
+} DecoderConfig;
+
+typedef enum ByteOrder { ByteOrderLittleEndian, ByteOrderBigEndian } ByteOrder;
+
+typedef struct RawPCMConfig
+{
+        int     in_bitwidth;
+        int     in_signed;
+        ByteOrder in_endian;
+} RawPCMConfig;
+
+extern ReaderConfig global_reader;
+extern WriterConfig global_writer;
+extern UiConfig global_ui_config;
+extern DecoderConfig global_decoder;
+extern RawPCMConfig global_raw_pcm;
+#endif
+
+#if 1 /* Moved from get_audio.c */
+#ifdef LIBSNDFILE
+#include <sndfile.h>
+#else
+typedef void SNDFILE;
+#endif /* ifdef LIBSNDFILE */
+#endif
+
+#if 1 /* Moved from get_audio.c */
+struct PcmBuffer {
+        void   *ch[2];           /* buffer for each channel */
+        int     w;               /* sample width */
+        int     n;               /* number samples allocated */
+        int     u;               /* number samples used */
+        int     skip_start;      /* number samples to ignore at the beginning */
+        int     skip_end;        /* number samples to ignore at the end */
+};
+
+typedef struct PcmBuffer PcmBuffer;
+#endif
+
+#if 1 /* Moved from get_audio.c */
+/* global data for get_audio.c. */
+typedef struct get_audio_global_data_struct {
+        int     count_samples_carefully;
+        int     pcmbitwidth;
+        int     pcmswapbytes;
+        int     pcm_is_unsigned_8bit;
+        int     pcm_is_ieee_float;
+        unsigned int num_samples_read;
+        FILE   *music_in;
+        SNDFILE *snd_file;
+        hip_t   hip;
+        PcmBuffer pcm32;
+        PcmBuffer pcm16;
+        size_t  in_id3v2_size;
+        unsigned char* in_id3v2_tag;
+} get_audio_global_data;
+
+typedef get_audio_global_data AudioData;
+#endif
+
 int     is_mpeg_file_format( int input_format );
 
-int     init_infile(lame_t gfp, char const * inPath);
-int     samples_to_skip_at_start(void);
-int     samples_to_skip_at_end(void);
-void    close_infile(void);
-int     get_audio(lame_t gfp, int buffer[2][1152]);
-int     get_audio16(lame_t gfp, short buffer[2][1152]);
+int     init_infile(lame_t gfp, AudioData* audioData, ReaderConfig* readerConfig, DecoderConfig* decoderConfig, RawPCMConfig* rawPcmConfig, char const* inPath);
+int     samples_to_skip_at_start(AudioData* audioData);
+int     samples_to_skip_at_end(AudioData* audioData);
+void    close_infile(AudioData* audioData);
+int     get_audio(lame_t gfp, AudioData* audioData, ReaderConfig* readerConfig, DecoderConfig* decoderConfig, RawPCMConfig* rawPcmConfig, int buffer[2][1152]);
+int     get_audio16(lame_t gfp, AudioData* audioData, ReaderConfig* readerConfig, DecoderConfig* decoderConfig, RawPCMConfig* rawPcmConfig, short buffer[2][1152]);
 int     get_audio_float(lame_t gfp, float buffer[2][1152]);
 int     get_audio_double(lame_t gfp, double buffer[2][1152]);
-hip_t   get_hip(void);
+hip_t   get_hip(AudioData* audioData);
 
 FILE   *init_outfile(char const *outPath, int decode);
 int     WriteWaveHeader(FILE * const fp, int pcmbytes, int freq, int channels, int bits);
-void    put_audio16(FILE* outf, short Buffer[2][1152], int iread, int nch);
+void    put_audio16(ReaderConfig* readerConfig, WriterConfig* writerConfig, DecoderConfig* decoderConfig, FILE* outf, short Buffer[2][1152], int iread, int nch);
 
 /*
 struct AudioReader;
@@ -80,10 +171,10 @@ int     aw_write(AudioWriter aw, float buffer[2][1152], int n);
 
 */
 
-extern size_t sizeOfOldTag(lame_t gf);
-extern unsigned char* getOldTag(lame_t gf);
+extern size_t sizeOfOldTag(lame_t gf, AudioData* audioData);
+extern unsigned char* getOldTag(lame_t gf, AudioData* audioData);
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 
